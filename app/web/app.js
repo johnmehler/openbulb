@@ -1,4 +1,4 @@
-import { DEFAULT_STATE, createSimDevice, createSerialDevice, connectMqttHub } from './devices.js';
+import { DEFAULT_STATE, createSerialDevice, connectMqttHub } from './devices.js';
 
 const $ = (s) => document.querySelector(s);
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -64,37 +64,21 @@ const ls = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
 };
 
-let bulbs = (ls.get('bulbs', [
-  { id: 'sim-desk', name: 'Desk (sim)', transport: 'sim', url: null },
-  { id: 'sim-bed', name: 'Bedroom (sim)', transport: 'sim', url: null },
-])).filter((b) => (b.transport ?? (b.url ? 'http' : 'sim')) !== 'http'); // HTTP transport removed
-let selected = bulbs[0]?.id ?? null;
+let selected = null;
 const devices = new Map();
-let hub = null;               // MQTT broker connection (null until connected)
-const sessionBulbs = [];      // bulbs discovered via MQTT — not persisted
+let hub = null;          // MQTT broker connection (null until connected)
+let sessionBulbs = [];   // connected bulbs (MQTT-discovered + USB) — session only
 
 function deviceFor(bulb) {
-  const transport = bulb.transport ?? 'sim';
-  if (transport === 'mqtt') {
-    const d = devices.get(bulb.id);
-    if (!d) throw new Error('mqtt not connected');
-    return d;
-  }
-  if (!devices.has(bulb.id)) {
-    if (transport === 'serial') {
-      // pre-connected via the Connect USB button
-      throw new Error('serial not connected');
-    }
-    devices.set(bulb.id, createSimDevice(`sim:${bulb.id}`));
-  }
-  return devices.get(bulb.id);
+  const d = devices.get(bulb.id);
+  if (!d) throw new Error(`${bulb.transport ?? 'device'} not connected`);
+  return d;
 }
 
-function allBulbs() { return [...bulbs, ...sessionBulbs]; }
+function allBulbs() { return sessionBulbs; }
 
 function deviceLabel(dev) {
-  return dev.kind === 'sim' ? 'simulator'
-    : dev.kind === 'serial' ? 'USB serial'
+  return dev.kind === 'serial' ? 'USB serial'
     : dev.kind === 'mqtt' ? 'MQTT'
     : 'device';
 }
@@ -203,7 +187,7 @@ async function select(id) {
       const { h, s } = rgbToHsv(view.r ?? 100, view.g ?? 100, view.b ?? 100);
       ui.h = h; ui.s = s;
     }
-    setStatus('ok', dev.kind === 'sim' ? label : `${label} — connected`);
+    setStatus('ok', `${label} — connected`);
   } catch (e) {
     view = { ...DEFAULT_STATE };
     enabled = new Set(CHANNELS);
@@ -267,10 +251,9 @@ if ('serial' in navigator) {
     if (devices.has('esp32-usb')) {
       try { await devices.get('esp32-usb').close(); } catch {}
       devices.delete('esp32-usb');
-      bulbs = bulbs.filter((b) => b.id !== 'esp32-usb');
-      ls.set('bulbs', bulbs);
+      sessionBulbs = sessionBulbs.filter((b) => b.id !== 'esp32-usb');
       renderChips();
-      select(bulbs[0]?.id ?? 'all');
+      select(sessionBulbs[0]?.id ?? 'all');
       return;
     }
     serialBtn.disabled = true;
@@ -278,9 +261,8 @@ if ('serial' in navigator) {
       const dev = await createSerialDevice();
       const id = 'esp32-usb';
       devices.set(id, dev);
-      if (!bulbs.some((b) => b.id === id)) {
-        bulbs.push({ id, name: 'ESP32 (USB)', transport: 'serial', url: null });
-        ls.set('bulbs', bulbs);
+      if (!sessionBulbs.some((b) => b.id === id)) {
+        sessionBulbs.push({ id, name: 'ESP32 (USB)', transport: 'serial' });
       }
       renderChips();
       await select(id);
@@ -301,9 +283,9 @@ brokerBtn.onclick = async () => {
   if (hub) {
     try { hub.client.end(); } catch {}
     hub = null;
-    sessionBulbs.length = 0;
+    sessionBulbs = sessionBulbs.filter((b) => b.transport !== 'mqtt');
     renderChips();
-    select(bulbs[0]?.id ?? 'all');
+    select(sessionBulbs[0]?.id ?? 'all');
     return;
   }
   brokerBtn.disabled = true;
@@ -328,4 +310,4 @@ brokerBtn.onclick = async () => {
 };
 
 renderChips();
-select(selected);
+render();

@@ -33,13 +33,14 @@ DUTY_MAX = 1023
 
 # Channels actually wired on the bench rig — reported to the app so it can
 # disable controls that can't do anything. Update when hardware changes.
-WIRED_CHANNELS = ["ww"]
+# ww=GPIO4 (LED 1), cw=GPIO19 (LED 2).
+WIRED_CHANNELS = ["ww", "cw"]
 
 STATE = {
     "on": True,
     "brightness": 80,
     "r": 100, "g": 100, "b": 100,
-    "ww": 100, "cw": 0,
+    "ww": 100, "cw": 100,
 }
 
 pwm = {name: PWM(Pin(pin), freq=PWM_FREQ, duty=0)

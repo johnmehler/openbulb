@@ -44,13 +44,14 @@ DUTY_MAX = 1023
 
 # Channels actually wired — reported to hosts so they can disable dead
 # controls. Update when hardware changes.
-WIRED_CHANNELS = ["ww"]
+# ww=GPIO4 (LED 1), cw=GPIO19 (LED 2).
+WIRED_CHANNELS = ["ww", "cw"]
 
 STATE = {
     "on": True,
     "brightness": 80,
     "r": 100, "g": 100, "b": 100,
-    "ww": 100, "cw": 0,
+    "ww": 100, "cw": 100,
 }
 
 CHANNEL_KEYS = ("on", "brightness", "r", "g", "b", "ww", "cw")

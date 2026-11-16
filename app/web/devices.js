@@ -1,7 +1,6 @@
 // Device adapters for the bulb command protocol (see docs/protocol.md):
 // state object { on, brightness, r, g, b, ww, cw, channels? } (channels 0-100).
-// Transports: MQTT over the broker (product), USB serial JSON-lines (bench),
-// and in-browser simulators.
+// Transports: MQTT over the broker (product) and USB serial JSON-lines (bench).
 
 export const DEFAULT_STATE = {
   on: true,
@@ -9,29 +8,6 @@ export const DEFAULT_STATE = {
   r: 100, g: 100, b: 100,
   ww: 0, cw: 0,
 };
-
-const ls = {
-  get(k, fb) { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
-};
-
-// In-browser bulb. State persists in localStorage so sims survive reloads.
-export function createSimDevice(storageKey, initial = {}) {
-  let state = { ...DEFAULT_STATE, ...ls.get(storageKey, {}), ...initial };
-  const listeners = new Set();
-  const emit = () => listeners.forEach((l) => l({ ...state }));
-  return {
-    kind: 'sim',
-    async getState() { return { ...state }; },
-    async setState(patch) {
-      state = { ...state, ...patch };
-      ls.set(storageKey, state);
-      emit();
-      return { ...state };
-    },
-    onChange(l) { listeners.add(l); },
-  };
-}
 
 // Real bulb over USB serial: an ESP32 running firmware/bulb/serial.py.
 // Every command gets exactly one JSON-line reply; {} reads the state.
