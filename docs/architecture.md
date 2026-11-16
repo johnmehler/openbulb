@@ -13,7 +13,7 @@ the same command path.
 | Control app              | `app/web/` → `app/mobile/` | phone / computer             |
 | Voice remote firmware    | `firmware/remote/`     | XIAO ESP32-S3 in handheld        |
 | Voice host pipeline      | `host/`                | Raspberry Pi 4/5 or always-on PC |
-| MQTT broker (Mosquitto)  | external               | same Pi/PC as host pipeline      |
+| MQTT broker              | `tools/mqtt-broker.js` (dev) → Mosquitto (prod) | same Pi/PC as host pipeline |
 | Hardware designs         | `hardware/`            | KiCad files, BOMs, prints        |
 
 ## Topology
@@ -47,11 +47,14 @@ the same command path.
 5. Host **dispatch** publishes to the same broker topics the app uses
 6. Bulbs execute → state publishes back → remote LED shows *Updated*
 
-## Topic scheme (planned)
+## Topic scheme
 
-- `bulb/<id>/cmd`, `bulb/<id>/state`
-- `room/<name>/cmd`, `room/<name>/state` (aggregated)
-- `voice/<remote>/audio`, `voice/<remote>/status`
+Bulb state transport is live today (`docs/protocol.md`); voice/OTA topics
+land with the remote and host pipeline:
+
+- `bulb/<id>/cmd`, `bulb/<id>/state` — implemented (retained state)
+- `room/<name>/cmd`, `room/<name>/state` — firmware supports via `ROOMS`; broker-side groups pending
+- `voice/<remote>/audio`, `voice/<remote>/status` — Phase 6
 - `bulb/<id>/ota` — wireless firmware updates to all bulbs at once
 
 ## Docs

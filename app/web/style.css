@@ -173,6 +173,27 @@ main {
 }
 #connectSerial:disabled { opacity: 0.5; cursor: default; }
 
+#brokerRow { display: flex; gap: 8px; }
+#brokerRow input {
+  flex: 1;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-2);
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 13px;
+}
+#brokerRow button {
+  padding: 9px 16px;
+  border-radius: 10px;
+  border: none;
+  background: var(--accent);
+  color: #1a1a1a;
+  font-weight: 600;
+  cursor: pointer;
+}
+#brokerRow button:disabled { opacity: 0.5; }
+
 #addDevice { display: flex; gap: 8px; }
 #addDevice input {
   flex: 1;

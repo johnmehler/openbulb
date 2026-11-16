@@ -1,0 +1,11 @@
+{
+  "name": "bulb-tools",
+  "private": true,
+  "description": "Dev tooling for the bulb project (MQTT broker, tests)",
+  "dependencies": {
+    "aedes": "^0.51.3",
+    "mqtt": "^5.10.1",
+    "websocket-stream": "^5.5.2",
+    "ws": "^8.18.0"
+  }
+}

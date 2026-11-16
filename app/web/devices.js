@@ -1,7 +1,7 @@
-// Device adapters for the bulb command protocol (see README.md):
-//   GET  /api/state  -> { on, brightness, r, g, b, ww, cw }   (channels 0-100)
-//   POST /api/state  <- same shape, partial updates accepted
-// Serial transport speaks the same JSON shape, one object per line over USB.
+// Device adapters for the bulb command protocol (see docs/protocol.md):
+// state object { on, brightness, r, g, b, ww, cw, channels? } (channels 0-100).
+// Transports: MQTT over the broker (product), USB serial JSON-lines (bench),
+// and in-browser simulators.
 
 export const DEFAULT_STATE = {
   on: true,
@@ -33,27 +33,7 @@ export function createSimDevice(storageKey, initial = {}) {
   };
 }
 
-// Real bulb over Wi-Fi: an ESP32 running firmware/bulb_server.py on the LAN.
-export function createHttpDevice(baseUrl) {
-  const url = baseUrl.replace(/\/+$/, '');
-  async function req(method, body) {
-    const res = await fetch(`${url}/api/state`, {
-      method,
-      headers: body ? { 'Content-Type': 'application/json' } : undefined,
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
-  }
-  return {
-    kind: 'http',
-    baseUrl: url,
-    getState: () => req('GET'),
-    setState: (patch) => req('POST', patch),
-  };
-}
-
-// Real bulb over USB serial: an ESP32 running firmware/bulb_serial.py.
+// Real bulb over USB serial: an ESP32 running firmware/bulb/serial.py.
 // Every command gets exactly one JSON-line reply; {} reads the state.
 // NOTE: requestPort() must run inside a user gesture (button click).
 export async function createSerialDevice() {
@@ -109,4 +89,66 @@ export async function createSerialDevice() {
     setState: (patch) => send(patch),
     close: () => port.close(),
   };
+}
+
+// ---- MQTT (broker) ----------------------------------------------------------
+// One broker connection serves every bulb: bulbs publish retained state to
+// bulb/<id>/state and obey partial-state JSON on bulb/<id>/cmd.
+// The browser talks WebSocket (ws://host:9001); firmware talks TCP :1883 —
+// tools/mqtt-broker.js bridges both to one broker for dev.
+
+export async function connectMqttHub(brokerUrl) {
+  const client = mqtt.connect(brokerUrl, {
+    clientId: 'bulb-app-' + Math.random().toString(16).slice(2),
+    reconnectPeriod: 3000,
+    protocolVersion: 4, // MQTT 3.1.1 — matches umqtt on the ESP32 and aedes
+  });
+  await new Promise((res, rej) => {
+    client.once('connect', res);
+    client.once('error', rej);
+  });
+
+  const states = new Map(); // bulbId -> last known state object
+  const stateListeners = new Set();
+
+  client.on('message', (topic, payload) => {
+    const m = topic.match(/^bulb\/([^/]+)\/state$/);
+    if (!m) return;
+    try {
+      const st = JSON.parse(payload.toString());
+      states.set(m[1], st);
+      stateListeners.forEach((l) => l(m[1], st));
+    } catch { /* malformed payload */ }
+  });
+  client.subscribe('bulb/+/state');
+
+  function onState(l) {
+    stateListeners.add(l);
+    return () => stateListeners.delete(l);
+  }
+
+  function deviceFor(bulbId) {
+    return {
+      kind: 'mqtt',
+      bulbId,
+      async getState() {
+        const cached = states.get(bulbId);
+        if (cached) return cached;
+        // No retained state seen yet — ask the bulb to republish.
+        return new Promise((res, rej) => {
+          const timer = setTimeout(() => rej(new Error('state query timeout')), 2000);
+          const off = onState((id, st) => {
+            if (id === bulbId) { clearTimeout(timer); off(); res(st); }
+          });
+          client.publish(`bulb/${bulbId}/cmd`, '{}');
+        });
+      },
+      setState(patch) {
+        client.publish(`bulb/${bulbId}/cmd`, JSON.stringify(patch));
+        return Promise.resolve(states.get(bulbId) ?? {});
+      },
+    };
+  }
+
+  return { client, states, deviceFor, onState };
 }

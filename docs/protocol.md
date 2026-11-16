@@ -29,16 +29,35 @@ are covered in `docs/architecture.md`; extend this doc when those land.
   channels, so dead sliders never pretend to work.
 
 Updates are partial: send any subset of fields; the device merges and returns
-the full state object.
+the full state object. An empty object `{}` is a state query.
 
 ## Transports
 
-### HTTP (Wi-Fi) — `firmware/bulb/wifi.py`
+### MQTT (product) — `firmware/bulb/mqtt.py`
 
-- `GET /api/state` → state object
-- `POST /api/state` ← partial state → responds with full state object
+One broker serves every bulb, the app, and (later) the voice pipeline.
+Protocol level MQTT 3.1.1 everywhere (MicroPython `umqtt`, aedes dev broker,
+MQTT.js pinned to `protocolVersion: 4`).
 
-### USB serial — `firmware/bulb/serial.py`
+- Bulb **subscribes** `bulb/<id>/cmd` — payload is a partial state object.
+  If `ROOMS` is set in firmware, it also subscribes `room/<name>/cmd`.
+- Bulb **publishes** the full state object to `bulb/<id>/state`,
+  `retain=True` — late-joining apps/hosts get last-known state instantly,
+  and the app auto-discovers bulbs via `bulb/+/state`.
+- Every command (including `{}` queries) triggers a state publish.
+
+Dev broker (no Mosquitto needed):
+
+```
+cd tools && npm install && node mqtt-broker.js
+# TCP :1883 for firmware, WebSocket :9001 for the web app
+```
+
+Production: Mosquitto on the Pi/PC hub (`docs/architecture.md`).
+
+### USB serial (bench) — `firmware/bulb/serial.py`
+
+For breadboard work without Wi-Fi/broker. Same state object:
 
 - host → device: one JSON object per line (partial patch; `{}` reads state)
 - device → host: one JSON line with the full state object

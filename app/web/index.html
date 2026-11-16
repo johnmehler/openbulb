@@ -53,13 +53,14 @@
     <section id="devices">
       <div id="deviceChips"></div>
       <button id="connectSerial" type="button">Connect USB (ESP32)</button>
-      <form id="addDevice">
-        <input type="text" id="deviceUrl" placeholder="http://192.168.1.50" autocomplete="off">
-        <button type="submit">Add bulb</button>
-      </form>
+      <div id="brokerRow">
+        <input id="brokerUrl" type="text" placeholder="ws://localhost:9001" autocomplete="off">
+        <button id="connectBroker" type="button">Connect broker</button>
+      </div>
     </section>
   </main>
 
+  <script src="vendor/mqtt.min.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>

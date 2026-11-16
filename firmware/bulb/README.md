@@ -1,38 +1,41 @@
 # Bulb firmware (ESP32)
 
-MicroPython firmware for the ESP32 inside each bulb. Two transport variants —
-same state model, GPIO map, and protocol (`docs/protocol.md`):
+MicroPython firmware for the ESP32 inside each bulb. Two variants — same
+state model, GPIO map, and protocol (`docs/protocol.md`):
 
-| file        | transport          | use for                                  |
-|-------------|--------------------|------------------------------------------|
-| `serial.py` | USB serial, JSON-lines | bench work, no Wi-Fi (currently flashed) |
-| `wifi.py`   | HTTP on port 80    | deployed bulbs on home Wi-Fi             |
+| file        | transport                | use for                                  |
+|-------------|--------------------------|------------------------------------------|
+| `mqtt.py`   | Wi-Fi + MQTT (product)   | deployed bulbs on the broker network     |
+| `serial.py` | USB serial, JSON-lines   | bench work, no Wi-Fi/broker              |
 
 `led_test.py` — Phase 1 blink/PWM verification script (`mpremote run`).
 
-## Flashing
+## mqtt.py — the product firmware
 
-Board: 30-pin `ESP32-D0WD` on `COM3`.
+Set `SSID`, `PASSWORD`, `BROKER` (broker host IP), `BULB_ID` (unique per
+bulb), and optionally `ROOMS` at the top of the file, then:
 
-USB-serial mode (current):
+```
+python -m mpremote connect COM3 fs cp firmware/bulb/mqtt.py :main.py
+python -m mpremote connect COM3 reset
+```
+
+- Needs `umqtt` on the board (most ESP32 MicroPython builds include it; if
+  not, `mpremote mip install umqtt.robust` while the board has Wi-Fi).
+- Dev broker: `cd tools && npm install && node mqtt-broker.js` — set
+  `BROKER` to this PC's LAN IP. Production broker: Mosquitto on the hub.
+- Bulbs discover each other through the broker — the app sees every bulb
+  that publishes retained state, no manual pairing.
+- `WIRED_CHANNELS` reports populated PWM channels — `["ww"]` now
+  (Phase 1 LED on GPIO4); set all five when Phase 2 hardware is built.
+  GPIO map: `r=16 g=17 b=18 ww=4 cw=19`.
+
+## serial.py — bench firmware
 
 ```
 python -m mpremote connect COM3 fs cp firmware/bulb/serial.py :main.py
 python -m mpremote connect COM3 reset
 ```
 
-Wi-Fi mode — edit `SSID`/`PASSWORD` at the top of `wifi.py` first:
-
-```
-python -m mpremote connect COM3 fs cp firmware/bulb/wifi.py :main.py
-python -m mpremote connect COM3 reset
-```
-
-Notes:
-
-- Firmware must be `main.py` to auto-start on boot.
-- Don't leave an `mpremote` session connected while the web app holds the
-  serial port — only one process can own COM3.
-- `WIRED_CHANNELS` in each file reports which PWM channels are physically
-  populated — `["ww"]` now (Phase 1 LED on GPIO4); set all five when Phase 2
-  hardware is built. GPIO map: `r=16 g=17 b=18 ww=4 cw=19`.
+Don't leave an `mpremote` session connected while the web app holds the
+serial port — only one process can own COM3.
