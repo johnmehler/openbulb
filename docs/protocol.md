@@ -4,6 +4,10 @@ Shared contract between the app (`app/web/`), bulb firmware (`firmware/bulb/`),
 and (later) the Phase 6 voice host pipeline. Change it here first, then both
 sides.
 
+Scope: the bulb **state object** and its transports. System-level concerns —
+room/group topics, device discovery, OTA updates, the voice command schema —
+are covered in `docs/architecture.md`; extend this doc when those land.
+
 ## State object
 
 ```json
