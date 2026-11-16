@@ -1,0 +1,200 @@
+:root {
+  --bg: #14161a;
+  --panel: #1d2026;
+  --panel-2: #232730;
+  --text: #e8eaed;
+  --muted: #9aa0a6;
+  --accent: #f5c542;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--panel-2);
+}
+
+h1 { font-size: 18px; margin: 0; font-weight: 600; }
+
+.status {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  color: var(--muted);
+}
+.status.ok { color: #7ee08a; }
+.status.err { color: #ff7b72; }
+
+main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(300px, 1fr);
+  grid-template-rows: 1fr auto;
+  gap: 20px;
+  padding: 22px;
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+#stage {
+  grid-row: 1 / 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: var(--panel);
+  border-radius: 16px;
+  padding: 28px;
+}
+
+#bulbGlow {
+  width: 220px;
+  height: 220px;
+  display: grid;
+  place-items: center;
+}
+
+#bulb {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: #262a31;
+  transition: background 120ms linear;
+}
+
+#bulbName { font-size: 15px; color: var(--muted); }
+
+#channelBars {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  width: 100%;
+  max-width: 340px;
+}
+
+.chbar { text-align: center; font-size: 10px; color: var(--muted); }
+.chbar .track {
+  height: 60px;
+  background: var(--panel-2);
+  border-radius: 6px;
+  margin-top: 4px;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+.chbar .fill { width: 100%; background: var(--accent); }
+
+#controls {
+  background: var(--panel);
+  border-radius: 16px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.power {
+  align-self: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: none;
+  font-size: 26px;
+  cursor: pointer;
+  background: var(--panel-2);
+  color: var(--muted);
+}
+.power.on { background: var(--accent); color: #1a1a1a; }
+
+.ctl label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.ctl.disabled { opacity: 0.35; }
+
+.ctl input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+#colorReadout {
+  font-size: 12px;
+  color: var(--muted);
+  font-family: ui-monospace, monospace;
+  text-align: center;
+}
+
+#devices {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#deviceChips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.chip {
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-2);
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 13px;
+}
+.chip.active { border-color: var(--accent); color: var(--text); }
+
+#connectSerial {
+  padding: 9px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-2);
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  align-self: flex-start;
+}
+#connectSerial:disabled { opacity: 0.5; cursor: default; }
+
+#addDevice { display: flex; gap: 8px; }
+#addDevice input {
+  flex: 1;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-2);
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 13px;
+}
+#addDevice button {
+  padding: 9px 16px;
+  border-radius: 10px;
+  border: none;
+  background: var(--accent);
+  color: #1a1a1a;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+@media (max-width: 760px) {
+  main { grid-template-columns: 1fr; }
+  #stage { grid-row: auto; }
+  #devices { grid-column: 1; }
+}

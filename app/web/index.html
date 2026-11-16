@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bulb Controller</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Bulb Controller</h1>
+    <div id="connStatus" class="status idle">no device</div>
+  </header>
+
+  <main>
+    <section id="stage">
+      <div id="bulbGlow"><div id="bulb"></div></div>
+      <div id="bulbName">—</div>
+      <div id="channelBars"></div>
+    </section>
+
+    <section id="controls">
+      <button id="powerBtn" class="power" title="Power">⏻</button>
+
+      <div class="ctl">
+        <label for="brightness">Brightness <span id="brightnessVal"></span></label>
+        <input type="range" id="brightness" min="0" max="100" value="80">
+      </div>
+
+      <div class="ctl">
+        <label for="hue">Hue <span id="hueVal"></span></label>
+        <input type="range" id="hue" min="0" max="360" value="210">
+      </div>
+
+      <div class="ctl">
+        <label for="sat">Saturation <span id="satVal"></span></label>
+        <input type="range" id="sat" min="0" max="100" value="80">
+      </div>
+
+      <div class="ctl">
+        <label for="ww">Warm White <span id="wwVal"></span></label>
+        <input type="range" id="ww" min="0" max="100" value="0">
+      </div>
+
+      <div class="ctl">
+        <label for="cw">Cool White <span id="cwVal"></span></label>
+        <input type="range" id="cw" min="0" max="100" value="0">
+      </div>
+
+      <div id="colorReadout"></div>
+    </section>
+
+    <section id="devices">
+      <div id="deviceChips"></div>
+      <button id="connectSerial" type="button">Connect USB (ESP32)</button>
+      <form id="addDevice">
+        <input type="text" id="deviceUrl" placeholder="http://192.168.1.50" autocomplete="off">
+        <button type="submit">Add bulb</button>
+      </form>
+    </section>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
