@@ -54,28 +54,31 @@ main {
 #stage {
   grid-row: 1 / -1;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
   background: var(--panel);
   border-radius: 16px;
   padding: 28px;
 }
 
-#bulbRow {
+#bulbs {
   display: flex;
   gap: 32px;
   flex-wrap: wrap;
   justify-content: center;
 }
 
-.bulb-unit {
+.bulb-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 14px;
+  background: var(--panel-2);
+  border-radius: 16px;
+  padding: 20px 24px;
 }
+
+.bulb-card.off .bulb { opacity: 0.45; }
 
 .bulb {
   width: 110px;
@@ -85,51 +88,27 @@ main {
   transition: background 120ms linear;
 }
 
-.unit-name { font-size: 12px; color: var(--muted); }
+.bulb-name { font-size: 14px; font-weight: 600; }
 
-#bulbName { font-size: 15px; color: var(--muted); }
-
-#channelBars {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 10px;
-  width: 100%;
-  max-width: 340px;
-}
-
-.chbar { text-align: center; font-size: 10px; color: var(--muted); }
-.chbar .track {
-  height: 60px;
-  background: var(--panel-2);
-  border-radius: 6px;
-  margin-top: 4px;
-  display: flex;
-  align-items: flex-end;
-  overflow: hidden;
-}
-.chbar .fill { width: 100%; background: var(--accent); }
-
-#controls {
-  background: var(--panel);
-  border-radius: 16px;
-  padding: 22px;
+.bulb-controls {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
 }
 
-.power {
-  align-self: center;
-  width: 64px;
-  height: 64px;
+.bulb-power {
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: none;
-  font-size: 26px;
+  font-size: 19px;
   cursor: pointer;
-  background: var(--panel-2);
+  background: var(--panel);
   color: var(--muted);
 }
-.power.on { background: var(--accent); color: #1a1a1a; }
+.bulb-power.on { background: var(--accent); color: #1a1a1a; }
 
 .ctl label {
   display: flex;
@@ -139,51 +118,8 @@ main {
   margin-bottom: 6px;
 }
 
-.ctl.disabled { opacity: 0.35; }
-
-#lightControls {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.light-ctl {
-  background: var(--panel-2);
-  border-radius: 12px;
-  padding: 12px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.light-head { display: flex; align-items: center; gap: 10px; }
-
-.light-power {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: none;
-  background: var(--panel);
-  color: var(--muted);
-  font-size: 14px;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-.light-power.on { background: var(--accent); color: #1a1a1a; }
-
-.light-name { font-size: 13px; font-weight: 600; }
-.light-val { margin-left: auto; font-size: 12px; color: var(--muted); font-family: ui-monospace, monospace; }
-
-.light-ctl input[type="range"] { width: 100%; accent-color: var(--accent); }
-
-.ctl input[type="range"] { width: 100%; accent-color: var(--accent); }
-
-#colorReadout {
-  font-size: 12px;
-  color: var(--muted);
-  font-family: ui-monospace, monospace;
-  text-align: center;
-}
+.ctl input[type="range"] { width: 180px; accent-color: var(--accent); }
+.ctl input[type="range"]:disabled { opacity: 0.4; }
 
 #devices {
   grid-column: 2;
@@ -192,51 +128,18 @@ main {
   gap: 12px;
 }
 
-#deviceChips { display: flex; flex-wrap: wrap; gap: 8px; }
-
-.chip {
-  padding: 7px 14px;
-  border-radius: 999px;
-  border: 1px solid var(--panel-2);
-  background: var(--panel);
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 13px;
-}
-.chip.active { border-color: var(--accent); color: var(--text); }
-
-#connectSerial {
-  padding: 9px 16px;
-  border-radius: 10px;
-  border: 1px solid var(--panel-2);
-  background: var(--panel-2);
-  color: var(--text);
-  font-size: 13px;
-  cursor: pointer;
-  align-self: flex-start;
-}
-#connectSerial:disabled { opacity: 0.5; cursor: default; }
-
-#brokerRow { display: flex; gap: 8px; }
-#brokerRow input {
-  flex: 1;
-  padding: 9px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--panel-2);
-  background: var(--panel-2);
-  color: var(--text);
-  font-size: 13px;
-}
-#brokerRow button {
-  padding: 9px 16px;
+#connectBtn {
+  padding: 12px 18px;
   border-radius: 10px;
   border: none;
   background: var(--accent);
   color: #1a1a1a;
   font-weight: 600;
+  font-size: 14px;
   cursor: pointer;
+  align-self: flex-start;
 }
-#brokerRow button:disabled { opacity: 0.5; }
+#connectBtn:disabled { opacity: 0.5; cursor: default; }
 
 #assistant {
   grid-column: 2;
@@ -283,26 +186,6 @@ main {
   cursor: pointer;
 }
 #aiForm button:disabled { opacity: 0.5; }
-
-#addDevice { display: flex; gap: 8px; }
-#addDevice input {
-  flex: 1;
-  padding: 9px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--panel-2);
-  background: var(--panel-2);
-  color: var(--text);
-  font-size: 13px;
-}
-#addDevice button {
-  padding: 9px 16px;
-  border-radius: 10px;
-  border: none;
-  background: var(--accent);
-  color: #1a1a1a;
-  font-weight: 600;
-  cursor: pointer;
-}
 
 @media (max-width: 760px) {
   main { grid-template-columns: 1fr; }

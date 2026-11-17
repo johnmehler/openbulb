@@ -1,50 +1,17 @@
-// Device adapters for the bulb command protocol (see docs/protocol.md):
+// Device adapters for the bulb command protocol (docs/protocol.md):
 // state object { on, brightness, r, g, b, ww, cw, channels? } (channels 0-100).
-// Transports: MQTT over the broker (product) and USB serial JSON-lines (bench).
-
-export const DEFAULT_STATE = {
-  on: true,
-  brightness: 80,
-  r: 100, g: 100, b: 100,
-  ww: 0, cw: 0,
-};
-
-const SIM_CHANNELS = ['r', 'g', 'b', 'ww', 'cw'];
-
-// Fake bulb persisted in localStorage — exercises the full UI and the AI
-// command path with no hardware or broker. Name is the storage key.
-export function createSimDevice(name) {
-  const key = `bulb.sim.${name}`;
-  const read = () => {
-    try {
-      const st = JSON.parse(localStorage.getItem(key));
-      if (st && typeof st === 'object') return { ...DEFAULT_STATE, ...st };
-    } catch { /* fresh bulb */ }
-    return { ...DEFAULT_STATE, channels: SIM_CHANNELS };
-  };
-  let state = read();
-  return {
-    kind: 'sim',
-    name,
-    getState: async () => ({ ...state }),
-    setState: async (patch) => {
-      state = { ...state, ...patch };
-      try { localStorage.setItem(key, JSON.stringify(state)); } catch {}
-      return { ...state };
-    },
-  };
-}
+// Transport: USB serial JSON-lines to firmware/bulb/serial.py on the ESP32.
 
 // Real bulb over USB serial: an ESP32 running firmware/bulb/serial.py.
 // Every command gets exactly one JSON-line reply; {} reads the state.
+// Always shows the port picker so the user explicitly chooses the ESP32's
+// COM port — previously granted ports are NOT auto-reused (a stale grant
+// can silently open the wrong or dead port).
 // NOTE: requestPort() must run inside a user gesture (button click).
 export async function createSerialDevice() {
-  const ports = await navigator.serial.getPorts();
-  const port = ports.length
-    ? ports[0]
-    : await navigator.serial.requestPort({
-        filters: [{ usbVendorId: 0x10c4 }], // CP2102/CP210x USB-UART bridges
-      });
+  const port = await navigator.serial.requestPort({
+    filters: [{ usbVendorId: 0x10c4 }], // CP2102/CP210x USB-UART bridges
+  });
   await port.open({ baudRate: 115200 });
 
   const reader = port.readable.getReader();
@@ -85,6 +52,22 @@ export async function createSerialDevice() {
     writer.write(encoder.encode(JSON.stringify(patch) + '\n')).catch(rej);
   });
 
+  // Opening the port resets the ESP32 (DTR/RTS), and MicroPython + main.py
+  // need a few seconds before the JSON-lines loop is reading stdin. Poll
+  // until the device answers or ~12s elapse, then fail the connect.
+  for (let i = 0; i < 6; i++) {
+    try {
+      await send({});
+      break;
+    } catch (e) {
+      if (i === 5) {
+        await port.close().catch(() => {});
+        throw e;
+      }
+      await new Promise((r) => setTimeout(r, 500));
+    }
+  }
+
   return {
     kind: 'serial',
     getState: () => send({}),
@@ -93,12 +76,12 @@ export async function createSerialDevice() {
   };
 }
 
-// Wraps a physical device to expose ONE channel as an independent bulb.
-// The physical device's master on/brightness are pinned to on/100% so the
-// channel level is absolute; the virtual bulb's "brightness" IS the channel
-// level, and "on" is derived from level > 0.
+// Wraps the physical serial device to expose ONE PWM channel as an
+// independent bulb. The physical device's master on/brightness are pinned
+// to on/100% so the channel level is absolute; the bulb's "brightness" IS
+// the channel level, and "on" is derived from level > 0.
 //   channel = physical PWM channel on the parent (e.g. "ww")
-//   pseudo  = channel name reported to the UI (e.g. "r" for correct tint/bar)
+//   pseudo  = channel name reported to the UI (e.g. "r" for tint lookup)
 export function createChannelDevice(parent, channel, pseudo) {
   let lastLvl = 0;
   let pinned = false;
@@ -114,7 +97,7 @@ export function createChannelDevice(parent, channel, pseudo) {
       const lvl = phys[channel] ?? 0;
       if (lvl > 0) lastLvl = lvl;
       const st = { on: lvl > 0, brightness: lvl, channels: [pseudo] };
-      st[pseudo] = 100; // level lives in `brightness`; pseudo stays maxed for the bar
+      st[pseudo] = 100; // level lives in `brightness`; pseudo stays maxed
       return st;
     },
     async setState(patch) {
@@ -131,66 +114,4 @@ export function createChannelDevice(parent, channel, pseudo) {
     },
   };
   return virt;
-}
-
-// ---- MQTT (broker) ----------------------------------------------------------
-// One broker connection serves every bulb: bulbs publish retained state to
-// bulb/<id>/state and obey partial-state JSON on bulb/<id>/cmd.
-// The browser talks WebSocket (ws://host:9001); firmware talks TCP :1883 —
-// tools/mqtt-broker.js bridges both to one broker for dev.
-
-export async function connectMqttHub(brokerUrl) {
-  const client = mqtt.connect(brokerUrl, {
-    clientId: 'bulb-app-' + Math.random().toString(16).slice(2),
-    reconnectPeriod: 3000,
-    protocolVersion: 4, // MQTT 3.1.1 — matches umqtt on the ESP32 and aedes
-  });
-  await new Promise((res, rej) => {
-    client.once('connect', res);
-    client.once('error', rej);
-  });
-
-  const states = new Map(); // bulbId -> last known state object
-  const stateListeners = new Set();
-
-  client.on('message', (topic, payload) => {
-    const m = topic.match(/^bulb\/([^/]+)\/state$/);
-    if (!m) return;
-    try {
-      const st = JSON.parse(payload.toString());
-      states.set(m[1], st);
-      stateListeners.forEach((l) => l(m[1], st));
-    } catch { /* malformed payload */ }
-  });
-  client.subscribe('bulb/+/state');
-
-  function onState(l) {
-    stateListeners.add(l);
-    return () => stateListeners.delete(l);
-  }
-
-  function deviceFor(bulbId) {
-    return {
-      kind: 'mqtt',
-      bulbId,
-      async getState() {
-        const cached = states.get(bulbId);
-        if (cached) return cached;
-        // No retained state seen yet — ask the bulb to republish.
-        return new Promise((res, rej) => {
-          const timer = setTimeout(() => rej(new Error('state query timeout')), 2000);
-          const off = onState((id, st) => {
-            if (id === bulbId) { clearTimeout(timer); off(); res(st); }
-          });
-          client.publish(`bulb/${bulbId}/cmd`, '{}');
-        });
-      },
-      setState(patch) {
-        client.publish(`bulb/${bulbId}/cmd`, JSON.stringify(patch));
-        return Promise.resolve(states.get(bulbId) ?? {});
-      },
-    };
-  }
-
-  return { client, states, deviceFor, onState };
 }

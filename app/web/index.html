@@ -9,62 +9,27 @@
 <body>
   <header>
     <h1>Bulb Controller</h1>
-    <div id="connStatus" class="status idle">no device</div>
+    <div id="connStatus" class="status idle">not connected</div>
   </header>
 
   <main>
     <section id="stage">
-      <div id="bulbRow"></div>
-      <div id="bulbName">—</div>
-      <div id="channelBars"></div>
-    </section>
-
-    <section id="controls">
-      <button id="powerBtn" class="power" title="Power">⏻</button>
-
-      <div class="ctl">
-        <label for="brightness">Brightness <span id="brightnessVal"></span></label>
-        <input type="range" id="brightness" min="0" max="100" value="80">
-      </div>
-
-      <div id="lightControls"></div>
-
-      <div class="ctl">
-        <label for="hue">Hue <span id="hueVal"></span></label>
-        <input type="range" id="hue" min="0" max="360" value="210">
-      </div>
-
-      <div class="ctl">
-        <label for="sat">Saturation <span id="satVal"></span></label>
-        <input type="range" id="sat" min="0" max="100" value="80">
-      </div>
-
-      <div id="colorReadout"></div>
+      <div id="bulbs"></div>
     </section>
 
     <section id="devices">
-      <div id="deviceChips"></div>
-      <div id="addDevice">
-        <input id="simName" type="text" placeholder="sim bulb name" autocomplete="off">
-        <button id="addSim" type="button">Add sim bulb</button>
-      </div>
-      <button id="connectSerial" type="button">Connect USB (ESP32)</button>
-      <div id="brokerRow">
-        <input id="brokerUrl" type="text" placeholder="ws://localhost:9001" autocomplete="off">
-        <button id="connectBroker" type="button">Connect broker</button>
-      </div>
+      <button id="connectBtn" type="button">Connect</button>
     </section>
 
     <section id="assistant">
       <div id="assistantLog"></div>
       <form id="aiForm">
-        <input id="aiInput" type="text" placeholder="e.g. turn off the blue bulb" autocomplete="off">
+        <input id="aiInput" type="text" placeholder="e.g. turn off the red bulb" autocomplete="off">
         <button id="aiSend" type="submit">Send</button>
       </form>
     </section>
   </main>
 
-  <script src="vendor/mqtt.min.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>

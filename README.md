@@ -22,8 +22,8 @@ remote. Roadmap: `outline.md` (local, gitignored). System design:
 ## Quick start
 
 ```
-# app (simulator works with no hardware)
-cd app/web && python -m http.server 8000   →  http://localhost:8000
+# app (simulator bulbs work with no hardware; AI box needs OPENAI_API_KEY)
+node tools/app-server.js   →   http://localhost:8000
 
 # firmware — see firmware/bulb/README.md
 ```

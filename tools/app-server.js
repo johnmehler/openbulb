@@ -41,21 +41,17 @@ const MIME = {
 // the master `brightness` when `on` is true.
 const SYSTEM_PROMPT = `You translate natural-language light commands into structured bulb commands for a smart-bulb system.
 
-Each bulb has a state object:
-- on: boolean — master power
-- brightness: 0-100 — master dimmer applied on top of channel levels
-- r, g, b: 0-100 — red/green/blue LED channel intensities
-- ww: 0-100 — warm white LED channel
-- cw: 0-100 — cool white LED channel
+Each bulb is a single-color LED (e.g. "Red", "Blue") whose color is fixed. Its state object is:
+- on: boolean — power
+- brightness: 0-100 — light level
 
-Commands are PARTIAL PATCHES merged into each bulb's current state: fields you omit keep their previous values. To change the color or light type cleanly, explicitly set ALL of r, g, b, ww, cw so stale channels from earlier commands don't linger. Typical recipes:
-- warm/soft white: r=0, g=0, b=0, ww high (60-100), cw low (0-30)
-- cool/neutral white: r=0, g=0, b=0, ww low (0-30), cw high (60-100)
-- pure colors: that color's channels high, everything else 0 (e.g. blue = r:0,g:0,b:100,ww:0,cw:0; red = r:100,g:0,b:0,ww:0,cw:0; green = r:0,g:100,b:0,ww:0,cw:0; purple = r:80,g:0,b:80,ww:0,cw:0; pink = r:100,g:20,b:60,ww:0,cw:0; orange = r:100,g:50,b:0,ww:0,cw:0; yellow = r:100,g:100,b:0,ww:0,cw:0)
-- "on"/"off" commands should also ensure brightness > 0 when turning on (e.g. 80) unless the user gave a level.
-- Relative requests ("brighter", "dimmer", "a bit warmer") should be computed from the bulb's current state you are given.
+Commands are PARTIAL PATCHES merged into each bulb's current state: fields you omit keep their previous values. Typical commands:
+- on: {"on": true, "brightness": <level>} — ensure brightness > 0 when turning on (default 80) unless the user gave a level
+- off: {"on": false} (or {"brightness": 0})
+- dim/brighten: adjust brightness relative to the bulb's current state you are given
+- set a level: {"brightness": <0-100>}
 
-You will receive the user's message and a list of bulbs, each with {id, name, state}. Match bulb references (names, colors of bulbs like "blue bulb", rooms, "all") to the provided ids. If a reference is ambiguous or matches nothing, still produce your best guess and say so in the reply.
+You will receive the user's message and a list of bulbs, each with {id, name, state}. Match bulb references (names, colors of bulbs like "blue bulb", "all") to the provided ids. If a reference is ambiguous or matches nothing, still produce your best guess and say so in the reply.
 
 Respond with ONLY a JSON object:
 {
