@@ -1,4 +1,4 @@
-import { DEFAULT_STATE, createSerialDevice, connectMqttHub } from './devices.js';
+import { DEFAULT_STATE, createSerialDevice, createChannelDevice, connectMqttHub } from './devices.js';
 
 const $ = (s) => document.querySelector(s);
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -67,7 +67,16 @@ const ls = {
 let selected = null;
 const devices = new Map();
 let hub = null;          // MQTT broker connection (null until connected)
-let sessionBulbs = [];   // connected bulbs (MQTT-discovered + USB) — session only
+let sessionBulbs = [];   // connected bulbs (virtual + MQTT) — session only
+let viewTints = null;    // channel -> rgb tint overrides for the selected bulb
+
+// The bench ESP32 drives two LEDs; expose each channel as its own bulb.
+// channel = physical PWM channel, pseudo = channel name reported to the UI
+// (r/b give correct orb tint + bar label), tint = orb color.
+const VIRTUAL_BULBS = [
+  { suffix: 'red', name: 'Red', channel: 'ww', pseudo: 'r', tint: [1, 0.05, 0.05] },
+  { suffix: 'blue', name: 'Blue', channel: 'cw', pseudo: 'b', tint: [0.15, 0.4, 1] },
+];
 
 function deviceFor(bulb) {
   const d = devices.get(bulb.id);
@@ -77,9 +86,25 @@ function deviceFor(bulb) {
 
 function allBulbs() { return sessionBulbs; }
 
+// Simulator bulbs — localStorage-backed fakes so the UI and AI commands work
+// with no hardware. Seeded once so "turn off the blue bulb" works out of the box.
+function addSim(name) {
+  const id = `sim:${name}`;
+  if (devices.has(id)) return;
+  devices.set(id, createSimDevice(name));
+  sessionBulbs.push({ id, name: `${name} (sim)`, transport: 'sim' });
+}
+
+if (!ls.get('simsSeeded', false)) {
+  ls.set('simsSeeded', true);
+  addSim('Blue bulb');
+  addSim('Red bulb');
+}
+
 function deviceLabel(dev) {
   return dev.kind === 'serial' ? 'USB serial'
     : dev.kind === 'mqtt' ? 'MQTT'
+    : dev.kind === 'channel' ? 'virtual'
     : 'device';
 }
 
@@ -171,9 +196,9 @@ function render() {
   const master = (view.on ? view.brightness : 0) / 100;
   const row = $('#bulbRow');
   row.innerHTML = '';
-  for (const ch of lightChannels) {
+  for (const ch of CHANNELS.filter((c) => enabled.has(c))) {
     const lvl = ((view[ch] ?? 0) / 100) * master;
-    const t = TINTS[ch] ?? [1, 1, 1];
+    const t = viewTints?.[ch] ?? TINTS[ch] ?? [1, 1, 1];
     const to255 = (v) => Math.round(clamp(v * lvl, 0, 1) * 255);
     const [r, g, b] = [to255(t[0]), to255(t[1]), to255(t[2])];
     const unit = document.createElement('div');
@@ -231,6 +256,7 @@ async function select(id) {
     const { channels, ...st } = res;
     view = st;
     enabled = new Set(channels ?? CHANNELS);
+    viewTints = ts[0]?.tints ?? null;
     lightChannels = LIGHT_CHANNELS.filter((c) => enabled.has(c));
     rebuildLightControls();
     applyAvailability();
@@ -242,6 +268,7 @@ async function select(id) {
   } catch (e) {
     view = { ...DEFAULT_STATE };
     enabled = new Set(CHANNELS);
+    viewTints = null;
     lightChannels = LIGHT_CHANNELS.filter((c) => enabled.has(c));
     rebuildLightControls();
     applyAvailability();
@@ -301,8 +328,8 @@ if ('serial' in navigator) {
   serialBtn.onclick = async () => {
     if (devices.has('esp32-usb')) {
       try { await devices.get('esp32-usb').close(); } catch {}
-      devices.delete('esp32-usb');
-      sessionBulbs = sessionBulbs.filter((b) => b.id !== 'esp32-usb');
+      for (const k of [...devices.keys()]) if (k.startsWith('esp32-usb')) devices.delete(k);
+      sessionBulbs = sessionBulbs.filter((b) => !b.id.startsWith('esp32-usb'));
       renderChips();
       select(sessionBulbs[0]?.id ?? 'all');
       return;
@@ -310,13 +337,16 @@ if ('serial' in navigator) {
     serialBtn.disabled = true;
     try {
       const dev = await createSerialDevice();
-      const id = 'esp32-usb';
-      devices.set(id, dev);
-      if (!sessionBulbs.some((b) => b.id === id)) {
-        sessionBulbs.push({ id, name: 'ESP32 (USB)', transport: 'serial' });
+      devices.set('esp32-usb', dev); // physical device — stays hidden
+      for (const v of VIRTUAL_BULBS) {
+        const id = `esp32-usb:${v.suffix}`;
+        devices.set(id, createChannelDevice(dev, v.channel, v.pseudo));
+        if (!sessionBulbs.some((b) => b.id === id)) {
+          sessionBulbs.push({ id, name: v.name, transport: 'virtual', tints: { [v.pseudo]: v.tint } });
+        }
       }
       renderChips();
-      await select(id);
+      await select(`esp32-usb:${VIRTUAL_BULBS[0].suffix}`);
     } catch {
       setStatus('err', 'USB connect failed');
     } finally {

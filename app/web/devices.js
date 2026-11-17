@@ -9,6 +9,32 @@ export const DEFAULT_STATE = {
   ww: 0, cw: 0,
 };
 
+const SIM_CHANNELS = ['r', 'g', 'b', 'ww', 'cw'];
+
+// Fake bulb persisted in localStorage — exercises the full UI and the AI
+// command path with no hardware or broker. Name is the storage key.
+export function createSimDevice(name) {
+  const key = `bulb.sim.${name}`;
+  const read = () => {
+    try {
+      const st = JSON.parse(localStorage.getItem(key));
+      if (st && typeof st === 'object') return { ...DEFAULT_STATE, ...st };
+    } catch { /* fresh bulb */ }
+    return { ...DEFAULT_STATE, channels: SIM_CHANNELS };
+  };
+  let state = read();
+  return {
+    kind: 'sim',
+    name,
+    getState: async () => ({ ...state }),
+    setState: async (patch) => {
+      state = { ...state, ...patch };
+      try { localStorage.setItem(key, JSON.stringify(state)); } catch {}
+      return { ...state };
+    },
+  };
+}
+
 // Real bulb over USB serial: an ESP32 running firmware/bulb/serial.py.
 // Every command gets exactly one JSON-line reply; {} reads the state.
 // NOTE: requestPort() must run inside a user gesture (button click).
@@ -65,6 +91,46 @@ export async function createSerialDevice() {
     setState: (patch) => send(patch),
     close: () => port.close(),
   };
+}
+
+// Wraps a physical device to expose ONE channel as an independent bulb.
+// The physical device's master on/brightness are pinned to on/100% so the
+// channel level is absolute; the virtual bulb's "brightness" IS the channel
+// level, and "on" is derived from level > 0.
+//   channel = physical PWM channel on the parent (e.g. "ww")
+//   pseudo  = channel name reported to the UI (e.g. "r" for correct tint/bar)
+export function createChannelDevice(parent, channel, pseudo) {
+  let lastLvl = 0;
+  let pinned = false;
+  const virt = {
+    kind: 'channel',
+    channel,
+    async getState() {
+      if (!pinned) {
+        pinned = true;
+        await parent.setState({ on: true, brightness: 100 });
+      }
+      const phys = await parent.getState();
+      const lvl = phys[channel] ?? 0;
+      if (lvl > 0) lastLvl = lvl;
+      const st = { on: lvl > 0, brightness: lvl, channels: [pseudo] };
+      st[pseudo] = 100; // level lives in `brightness`; pseudo stays maxed for the bar
+      return st;
+    },
+    async setState(patch) {
+      const p = {};
+      if ('on' in patch) p[channel] = patch.on ? (lastLvl || 50) : 0;
+      if ('brightness' in patch) p[channel] = patch.brightness;
+      if (pseudo in patch) p[channel] = patch[pseudo];
+      if (channel in patch) p[channel] = patch[channel];
+      if (Object.keys(p).length) {
+        await parent.setState(p);
+        if (p[channel] > 0) lastLvl = p[channel];
+      }
+      return virt.getState();
+    },
+  };
+  return virt;
 }
 
 // ---- MQTT (broker) ----------------------------------------------------------

@@ -44,11 +44,23 @@
 
     <section id="devices">
       <div id="deviceChips"></div>
+      <div id="addDevice">
+        <input id="simName" type="text" placeholder="sim bulb name" autocomplete="off">
+        <button id="addSim" type="button">Add sim bulb</button>
+      </div>
       <button id="connectSerial" type="button">Connect USB (ESP32)</button>
       <div id="brokerRow">
         <input id="brokerUrl" type="text" placeholder="ws://localhost:9001" autocomplete="off">
         <button id="connectBroker" type="button">Connect broker</button>
       </div>
+    </section>
+
+    <section id="assistant">
+      <div id="assistantLog"></div>
+      <form id="aiForm">
+        <input id="aiInput" type="text" placeholder="e.g. turn off the blue bulb" autocomplete="off">
+        <button id="aiSend" type="submit">Send</button>
+      </form>
     </section>
   </main>
 
