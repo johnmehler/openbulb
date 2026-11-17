@@ -180,8 +180,29 @@ const aiLog = $('#assistantLog');
 const aiForm = $('#aiForm');
 const aiInput = $('#aiInput');
 const aiSend = $('#aiSend');
+const aiMic = $('#aiMic');
 
-function logAi(cls, text, cmds) {
+// USD per 1M tokens, for the models this app is likely to run. Unknown
+// models still show raw token counts — cost line is omitted.
+const MODEL_PRICING = {
+  'gpt-4o-mini': { in: 0.15, out: 0.6 },
+  'gpt-4o': { in: 2.5, out: 10 },
+  'gpt-4.1-mini': { in: 0.4, out: 1.6 },
+  'gpt-4.1-nano': { in: 0.1, out: 0.4 },
+};
+
+function fmtUsage(usage, model) {
+  if (!usage) return null;
+  const tin = usage.prompt_tokens ?? 0;
+  const tout = usage.completion_tokens ?? 0;
+  const price = MODEL_PRICING[model];
+  const cost = price ? (tin * price.in + tout * price.out) / 1e6 : null;
+  const fmt = (n) => n.toLocaleString('en-US');
+  return `${fmt(tin)} in + ${fmt(tout)} out tok` +
+    (cost != null ? ` · ~$${cost < 0.01 ? cost.toFixed(5) : cost.toFixed(4)}` : '');
+}
+
+function logAi(cls, text, cmds, usage) {
   const el = document.createElement('div');
   el.className = `ai-msg ${cls}`;
   el.textContent = text;
@@ -190,6 +211,12 @@ function logAi(cls, text, cmds) {
     c.className = 'cmds';
     c.textContent = cmds;
     el.appendChild(c);
+  }
+  if (usage) {
+    const u = document.createElement('span');
+    u.className = 'usage';
+    u.textContent = usage;
+    el.appendChild(u);
   }
   aiLog.appendChild(el);
   aiLog.scrollTop = aiLog.scrollHeight;
@@ -224,6 +251,7 @@ aiForm.addEventListener('submit', async (e) => {
   aiInput.value = '';
   logAi('user', text);
   aiSend.disabled = true;
+  aiMic.disabled = true;
   try {
     const res = await fetch('/api/interpret', {
       method: 'POST',
@@ -254,14 +282,80 @@ aiForm.addEventListener('submit', async (e) => {
       }
     }
     renderAll();
-    logAi('bot', data.reply || 'Done.', summary.join('  ·  ') || null);
+    logAi('bot', data.reply || 'Done.', summary.join('  ·  ') || null,
+      fmtUsage(data.usage, data.model));
   } catch (err) {
     logAi('err', err.message.includes('fetch')
       ? 'AI server unreachable — run `node tools/app-server.js` instead of a plain static server'
       : err.message);
   } finally {
     aiSend.disabled = false;
+    aiMic.disabled = !voiceOk;
   }
 });
+
+// ---------- voice input ----------
+// Web Speech API (Chrome/Edge only). The live transcript fills the input;
+// the final result auto-submits the form through the same handler above.
+
+const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+const voiceOk = !!SpeechRec;
+
+if (voiceOk) {
+  const rec = new SpeechRec();
+  rec.lang = 'en-US';
+  rec.interimResults = true;
+  rec.continuous = false;
+  let listening = false;
+  let finalText = '';
+
+  const setListening = (on) => {
+    listening = on;
+    aiMic.classList.toggle('listening', on);
+    aiMic.title = on ? 'Stop listening' : 'Voice input';
+  };
+
+  rec.onresult = (e) => {
+    let interim = '';
+    finalText = '';
+    for (const r of e.results) {
+      if (r.isFinal) finalText += r[0].transcript;
+      else interim += r[0].transcript;
+    }
+    aiInput.value = (finalText + interim).trim();
+  };
+
+  rec.onend = () => {
+    setListening(false);
+    const text = finalText.trim();
+    if (text) {
+      aiInput.value = text;
+      aiForm.requestSubmit();
+    }
+  };
+
+  rec.onerror = (e) => {
+    setListening(false);
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      logAi('err', 'Microphone blocked — allow mic access for this site and try again.');
+    } else if (e.error === 'network') {
+      logAi('err', 'Speech recognition needs network access.');
+    } else if (e.error !== 'no-speech' && e.error !== 'aborted') {
+      logAi('err', `Voice input failed (${e.error})`);
+    }
+  };
+
+  aiMic.onclick = () => {
+    if (listening) { rec.stop(); return; }
+    finalText = '';
+    try {
+      rec.start();
+      setListening(true);
+    } catch { /* already started */ }
+  };
+} else {
+  aiMic.disabled = true;
+  aiMic.title = 'Voice input needs Chrome or Edge';
+}
 
 renderAll();

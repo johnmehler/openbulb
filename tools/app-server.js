@@ -91,13 +91,17 @@ async function interpret(body) {
     throw err;
   }
   const text = data.choices?.[0]?.message?.content;
+  let out;
   try {
-    return JSON.parse(text);
+    out = JSON.parse(text);
   } catch {
     const err = new Error('model returned malformed JSON');
     err.status = 502;
     throw err;
   }
+  out.usage = data.usage;
+  out.model = OPENAI_MODEL;
+  return out;
 }
 
 function readBody(req) {
