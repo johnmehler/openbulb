@@ -98,18 +98,52 @@ let pending = null;
 let flushTimer = null;
 
 const CHANNELS = ['r', 'g', 'b', 'ww', 'cw'];
+// Channels that get their own independent light control (power + level).
+// r/g/b stay under the hue/saturation color tuner instead.
+const LIGHT_CHANNELS = ['ww', 'cw'];
 let enabled = new Set(CHANNELS); // channels the selected device reports as wired
+let lightChannels = [];          // enabled ∩ LIGHT_CHANNELS
+const lightEls = new Map();      // channel -> {slider, val, power, last}
 
 function applyAvailability() {
   const color = enabled.has('r') && enabled.has('g') && enabled.has('b');
-  const map = [
-    ['hue', color], ['sat', color],
-    ['ww', enabled.has('ww')], ['cw', enabled.has('cw')],
-  ];
-  for (const [id, ok] of map) {
+  for (const id of ['hue', 'sat']) {
     const el = $(`#${id}`);
-    el.disabled = !ok;
-    el.closest('.ctl').classList.toggle('disabled', !ok);
+    el.disabled = !color;
+    el.closest('.ctl').classList.toggle('disabled', !color);
+  }
+}
+
+function rebuildLightControls() {
+  const box = $('#lightControls');
+  box.innerHTML = '';
+  lightEls.clear();
+  for (const ch of lightChannels) {
+    const div = document.createElement('div');
+    div.className = 'light-ctl';
+    div.innerHTML = `<div class="light-head"><button class="light-power" title="Power">⏻</button><span class="light-name">${ch.toUpperCase()}</span><span class="light-val"></span></div><input type="range" min="0" max="100">`;
+    const slider = div.querySelector('input');
+    const power = div.querySelector('.light-power');
+    const val = div.querySelector('.light-val');
+    slider.addEventListener('input', () => {
+      const v = +slider.value;
+      lightEls.get(ch).last = v;
+      push({ [ch]: v });
+    });
+    power.onclick = () => toggleLight(ch);
+    box.appendChild(div);
+    lightEls.set(ch, { slider, val, power, last: view[ch] ?? 0 });
+  }
+}
+
+function toggleLight(ch) {
+  const el = lightEls.get(ch);
+  const cur = view[ch] ?? 0;
+  if (cur > 0) {
+    el.last = cur;
+    push({ [ch]: 0 });
+  } else {
+    push({ [ch]: el.last || 50 });
   }
 }
 
@@ -132,21 +166,36 @@ function renderChips() {
 }
 
 function render() {
+  // One orb per independent light channel; tint = channel color × level ×
+  // master brightness × master power.
+  const master = (view.on ? view.brightness : 0) / 100;
+  const row = $('#bulbRow');
+  row.innerHTML = '';
+  for (const ch of lightChannels) {
+    const lvl = ((view[ch] ?? 0) / 100) * master;
+    const t = TINTS[ch] ?? [1, 1, 1];
+    const to255 = (v) => Math.round(clamp(v * lvl, 0, 1) * 255);
+    const [r, g, b] = [to255(t[0]), to255(t[1]), to255(t[2])];
+    const unit = document.createElement('div');
+    unit.className = 'bulb-unit';
+    unit.innerHTML = `<div class="bulb" style="background:rgb(${r},${g},${b});${lvl > 0 ? `filter:drop-shadow(0 0 ${30 + view.brightness * 0.5}px rgba(${r},${g},${b},0.55))` : ''}"></div><div class="unit-name">${ch.toUpperCase()}</div>`;
+    row.appendChild(unit);
+  }
+
   const [r, g, b] = previewColor(view);
   const hex = '#' + [r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('');
-  $('#bulb').style.background = `rgb(${r},${g},${b})`;
-  $('#bulbGlow').style.filter = view.on && view.brightness > 0
-    ? `drop-shadow(0 0 ${40 + view.brightness * 0.8}px rgba(${r},${g},${b},0.55))`
-    : 'none';
   $('#bulbName').textContent = selected === 'all' ? 'All bulbs (broadcast)' : (allBulbs().find((x) => x.id === selected)?.name ?? '—');
   $('#powerBtn').classList.toggle('on', !!view.on);
   $('#powerBtn').textContent = view.on ? '⏻' : '○';
   $('#brightness').value = view.brightness;
-  $('#ww').value = view.ww ?? 0;
-  $('#cw').value = view.cw ?? 0;
   $('#brightnessVal').textContent = `${view.brightness}%`;
-  $('#wwVal').textContent = `${view.ww ?? 0}%`;
-  $('#cwVal').textContent = `${view.cw ?? 0}%`;
+  for (const [ch, el] of lightEls) {
+    const lvl = view[ch] ?? 0;
+    el.slider.value = lvl;
+    el.val.textContent = `${lvl}%`;
+    el.power.classList.toggle('on', lvl > 0);
+    el.power.textContent = lvl > 0 ? '⏻' : '○';
+  }
   $('#hueVal').textContent = `${ui.h}°`;
   $('#satVal').textContent = `${ui.s}%`;
   $('#hue').value = ui.h;
@@ -182,6 +231,8 @@ async function select(id) {
     const { channels, ...st } = res;
     view = st;
     enabled = new Set(channels ?? CHANNELS);
+    lightChannels = LIGHT_CHANNELS.filter((c) => enabled.has(c));
+    rebuildLightControls();
     applyAvailability();
     if (ts.length === 1) {
       const { h, s } = rgbToHsv(view.r ?? 100, view.g ?? 100, view.b ?? 100);
@@ -191,6 +242,8 @@ async function select(id) {
   } catch (e) {
     view = { ...DEFAULT_STATE };
     enabled = new Set(CHANNELS);
+    lightChannels = LIGHT_CHANNELS.filter((c) => enabled.has(c));
+    rebuildLightControls();
     applyAvailability();
     setStatus('err', `${label} — unreachable`);
   }
@@ -238,8 +291,6 @@ function bindRange(id, key, transform = (v) => +v) {
 }
 
 bindRange('brightness', 'brightness');
-bindRange('ww', 'ww');
-bindRange('cw', 'cw');
 bindRange('hue', null);
 bindRange('sat', null);
 

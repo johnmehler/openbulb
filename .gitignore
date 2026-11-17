@@ -18,3 +18,5 @@ config.local.py
 # OS
 Thumbs.db
 .DS_Store
+
+.env

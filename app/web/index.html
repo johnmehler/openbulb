@@ -14,7 +14,7 @@
 
   <main>
     <section id="stage">
-      <div id="bulbGlow"><div id="bulb"></div></div>
+      <div id="bulbRow"></div>
       <div id="bulbName">—</div>
       <div id="channelBars"></div>
     </section>
@@ -27,6 +27,8 @@
         <input type="range" id="brightness" min="0" max="100" value="80">
       </div>
 
+      <div id="lightControls"></div>
+
       <div class="ctl">
         <label for="hue">Hue <span id="hueVal"></span></label>
         <input type="range" id="hue" min="0" max="360" value="210">
@@ -35,16 +37,6 @@
       <div class="ctl">
         <label for="sat">Saturation <span id="satVal"></span></label>
         <input type="range" id="sat" min="0" max="100" value="80">
-      </div>
-
-      <div class="ctl">
-        <label for="ww">Warm White <span id="wwVal"></span></label>
-        <input type="range" id="ww" min="0" max="100" value="0">
-      </div>
-
-      <div class="ctl">
-        <label for="cw">Cool White <span id="cwVal"></span></label>
-        <input type="range" id="cw" min="0" max="100" value="0">
       </div>
 
       <div id="colorReadout"></div>
