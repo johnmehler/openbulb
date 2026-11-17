@@ -7,7 +7,7 @@ __pycache__/
 .venv/
 venv/
 
-# Node (future app/mobile)
+# Node (future software/app/mobile)
 node_modules/
 
 # Secrets / local config

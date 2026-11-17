@@ -16,7 +16,7 @@ yet** — scaffold for Phase 6.
 ## Responsibilities
 
 - Button press → wake, record audio while held, stream to host pipeline
-  (`host/`) over Wi-Fi
+  (`software/host/`) over Wi-Fi
 - Drive status LED through the voice-command lifecycle
 - Report result back to host for confirmation
 

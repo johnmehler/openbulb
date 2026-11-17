@@ -10,10 +10,10 @@ the same command path.
 | component                | code                   | runs on                          |
 |--------------------------|------------------------|----------------------------------|
 | Bulb firmware            | `firmware/bulb/`       | ESP32 inside each bulb           |
-| Control app              | `app/web/` → `app/mobile/` | phone / computer             |
+| Control app              | `software/app/web/` → `software/app/mobile/` | phone / computer |
 | Voice remote firmware    | `firmware/remote/`     | XIAO ESP32-S3 in handheld        |
-| Voice host pipeline      | `host/`                | Raspberry Pi 4/5 or always-on PC |
-| MQTT broker              | `tools/mqtt-broker.js` (dev) → Mosquitto (prod) | same Pi/PC as host pipeline |
+| Voice host pipeline      | `software/host/`       | Raspberry Pi 4/5 or always-on PC |
+| MQTT broker              | `utils/mqtt-broker.js` (dev) → Mosquitto (prod) | same Pi/PC as host pipeline |
 | Hardware designs         | `hardware/`            | KiCad files, BOMs, prints        |
 
 ## Topology

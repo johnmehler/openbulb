@@ -22,12 +22,12 @@ python -m mpremote connect COM3 reset
 
 - Needs `umqtt` on the board (most ESP32 MicroPython builds include it; if
   not, `mpremote mip install umqtt.robust` while the board has Wi-Fi).
-- Dev broker: `cd tools && npm install && node mqtt-broker.js` — set
+- Dev broker: `cd utils && npm install && node mqtt-broker.js` — set
   `BROKER` to this PC's LAN IP. Production broker: Mosquitto on the hub.
 - Bulbs discover each other through the broker — the app sees every bulb
   that publishes retained state, no manual pairing.
 - `WIRED_CHANNELS` reports populated PWM channels — `["ww"]` now
-  (Phase 1 LED on GPIO4); set all five when Phase 2 hardware is built.
+  (Phase 1 LED on GPIO4); set all five when Phase 3 hardware is built.
   GPIO map: `r=16 g=17 b=18 ww=4 cw=19`.
 
 ## serial.py — bench firmware

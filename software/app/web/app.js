@@ -172,7 +172,7 @@ if (!('serial' in navigator)) {
 }
 
 // ---------- AI assistant ----------
-// Natural-language commands → POST /api/interpret (tools/app-server.js) →
+// Natural-language commands → POST /api/interpret (utils/app-server.js) →
 // OpenAI returns {reply, commands:[{bulbs, patch}]} → applied via the same
 // device adapters the sliders use.
 
@@ -263,7 +263,7 @@ aiForm.addEventListener('submit', async (e) => {
     try {
       data = JSON.parse(raw);
     } catch {
-      throw new Error(`server returned non-JSON (HTTP ${res.status}) — run \`node tools/app-server.js\`, not a plain static server`);
+      throw new Error(`server returned non-JSON (HTTP ${res.status}) — run \`node utils/app-server.js\`, not a plain static server`);
     }
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
 
@@ -286,7 +286,7 @@ aiForm.addEventListener('submit', async (e) => {
       fmtUsage(data.usage, data.model));
   } catch (err) {
     logAi('err', err.message.includes('fetch')
-      ? 'AI server unreachable — run `node tools/app-server.js` instead of a plain static server'
+      ? 'AI server unreachable — run `node utils/app-server.js` instead of a plain static server'
       : err.message);
   } finally {
     aiSend.disabled = false;

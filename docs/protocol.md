@@ -1,6 +1,7 @@
 # Bulb command protocol
 
-Shared contract between the app (`app/web/`), bulb firmware (`firmware/bulb/`),
+Shared contract between the app (`software/app/web/`), bulb firmware
+(`firmware/bulb/`),
 and (later) the Phase 6 voice host pipeline. Change it here first, then both
 sides.
 
@@ -49,7 +50,7 @@ MQTT.js pinned to `protocolVersion: 4`).
 Dev broker (no Mosquitto needed):
 
 ```
-cd tools && npm install && node mqtt-broker.js
+cd utils && npm install && node mqtt-broker.js
 # TCP :1883 for firmware, WebSocket :9001 for the web app
 ```
 
@@ -77,4 +78,4 @@ For breadboard work without Wi-Fi/broker. Same state object:
 | `cw`    | 19   |                          |
 
 `WIRED_CHANNELS` in each firmware file reports which are populated —
-currently `["ww"]` until Phase 2 hardware exists.
+currently `["ww"]` until Phase 3 hardware exists.

@@ -1,13 +1,13 @@
 // Dev server for the web app + AI command interpreter.
 //
-//   node tools/app-server.js   →   http://localhost:8000
+//   node utils/app-server.js   →   http://localhost:8000
 //
-// Serves app/web/ statics and exposes POST /api/interpret, which turns a
+// Serves software/app/web/ statics and exposes POST /api/interpret, which turns a
 // natural-language message ("turn off the blue bulb") into bulb command
 // patches via OpenAI. The API key stays server-side — never ship it to the
 // browser. Requires OPENAI_API_KEY in .env (repo root) or the environment.
 //
-// Later the same prompt/schema moves to host/nlp/ for the Phase 6 voice
+// Later the same prompt/schema moves to software/host/nlp/ for the Phase 6 voice
 // pipeline — the bulb-facing contract doesn't change.
 
 import http from 'node:http';
@@ -15,7 +15,7 @@ import { readFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const WEB_ROOT = fileURLToPath(new URL('../app/web', import.meta.url));
+const WEB_ROOT = fileURLToPath(new URL('../software/app/web', import.meta.url));
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url));
 
 try { process.loadEnvFile(join(REPO_ROOT, '.env')); } catch { /* env may come from the shell */ }

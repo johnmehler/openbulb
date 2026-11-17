@@ -10,7 +10,7 @@ With AI commands (recommended — serves the files AND the `/api/interpret`
 endpoint that calls OpenAI; needs `OPENAI_API_KEY` in `.env`):
 
 ```
-node tools/app-server.js     # from the repo root → http://localhost:8000
+node utils/app-server.js     # from the repo root → http://localhost:8000
 ```
 
 Static-only (no AI box): `python -m http.server 8000` from this directory —

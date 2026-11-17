@@ -1,5 +1,5 @@
 {
-  "name": "bulb-tools",
+  "name": "bulb-utils",
   "private": true,
   "description": "Dev tooling for the bulb project (MQTT broker, tests)",
   "dependencies": {
